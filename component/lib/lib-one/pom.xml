@@ -12,6 +12,6 @@
     </parent>
 
     <groupId>de.logiball.monorepo.lib</groupId>
-    <artifactId>lib-three</artifactId>
+    <artifactId>lib-one</artifactId>
     
 </project>

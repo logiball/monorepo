@@ -12,7 +12,7 @@
     </parent>
 
     <groupId>de.logiball.monorepo.service</groupId>
-    <artifactId>service-two</artifactId>
+    <artifactId>service-one</artifactId>
     <packaging>war</packaging>
 
     <dependencies>
@@ -24,11 +24,6 @@
         <dependency>
             <groupId>de.logiball.monorepo.lib</groupId>
             <artifactId>lib-two</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>de.logiball.monorepo.lib</groupId>
-            <artifactId>lib-three</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>

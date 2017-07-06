@@ -22,6 +22,6 @@ pom.xml.versionsBackup
 jacoco.exec
 
 # Monorepo tech needs us to hide
-pom.xml
+# pom.xml
 
 maven-repo

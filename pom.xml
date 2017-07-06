@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>de.logiball.monorepo</groupId>
+    <artifactId>monorepo</artifactId>
+    <version>HEAD-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>component/lib/lib-one</module>
+        <module>component/lib/lib-two</module>
+        <module>component/service/service-one</module>
+    </modules>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.5.3</version>
+                <configuration>
+                    <!-- Only to make this example working local -->
+                    <pushChanges>false</pushChanges>
+                    <localCheckout>true</localCheckout>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.2</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <properties>
+        <!-- Maven properties -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <java.source.version>1.8</java.source.version>
+    </properties>
+    <scm>
+        <connection>scm:git:git@github.com:logiball/monorepo.git</connection>
+        <developerConnection>scm:git:git@github.com:logiball/monorepo.git</developerConnection>
+        <tag>HEAD</tag>
+        <url>https://github.com/logiball/monorepo</url>
+    </scm>
+    <!-- Use this configuration only for testing -->
+    <distributionManagement>
+        <repository>
+            <id>local</id>
+            <name>Local Maven Repo</name>
+            <url>file://${project.basedir}/${parent.relativePath}/target/temp-maven-repo</url>
+        </repository>
+    </distributionManagement>
+</project>
