@@ -1,0 +1,27 @@
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+target
+.classpath
+.project
+.settings
+dependency-reduced-pom.xml
+bin
+
+# OSX
+*.DS_Store
+
+# IntelliJ IDE Project Files #
+*.iml
+*.idea
+*.versionsBackup
+pom.xml.versionsBackup
+jacoco.exec
+
+# Monorepo tech needs us to hide
+pom.xml
+
+maven-repo
