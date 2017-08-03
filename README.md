@@ -23,7 +23,7 @@ mvn install
 If only a specific project and it's dependencies should be build run:
 
 ```
-mvn install -pl de.logiball.monorepo.app:app-one -am
+mvn install -pl de.logiball.monorepo.service:service-one -am
 ```
 
 *For detailed description of the maven parameters above run `mvn -help`.*
@@ -80,9 +80,9 @@ Naming of directories:
 
 ## Releasing a Component
 
-To release a component like opens we are using branches. The name of the branch starts with `release/`. So a full release branch name looks like `release/service-one`.
+To release a component like service-on we are using branches. The name of the branch starts with `release/`. So a full release branch name looks like `release/service-one`.
 
-By default all components will **not** deployed. If a component should be deployed with it's own version, you must add the following plugin configuration:
+By default all components will **not** deployed. If a component should be deployed with it's own version, you must add the following plugin configuration to it's `pom-template.xml`:
 
 ```
 <plugin>
@@ -96,39 +96,34 @@ By default all components will **not** deployed. If a component should be deploy
 
 ### To Make the Branch
 
-```
-mvn clean
-git branch release/<component>
-git checkout release/<component>
-# will improve the following delete statement in the future. Remove all unneeded directories.
-git rm -r bundle/ component/service/ component/webapp/ component/lib/lib-two/ component/lib/lib-three/
-# Generate pom.xml files
-mr/checkout.sh
-sed -i '' 's/^pom.xml$/# pom.xml/' .gitignore
-find . -name pom.xml -type f  -exec chmod u+w {} \;  -exec git add {} \;
-git commit -am "<component> components only"
-git push --all
-```
-#### Release workflow
+This is a one time operation for every component. To create a new release branch execute the command `mr/release branch` like in the following example:
 
 ```
-mvn clean
-git checkout release/<component>
-git merge master
-git status --porcelain | grep '^DU' | cut -d' ' -f2 | xargs git rm -rf
-# Regenerate pom.xml files
-mr/checkout.sh
-# Before running release:prepare, make 'pom.xml' writable. It's only readable by mr/checkout.sh
-find . -name pom.xml -type f  -exec chmod u+w {} \;
-git commit -am "merge in advance of release"
-
-# If the git branch name is 'release/comp1' the result will be 'comp1'
-componentName=$(git rev-parse --abbrev-ref HEAD | cut -f2 -d/)
-mvn release:prepare --batch-mode -DautoVersionSubmodues=true -DreleaseVersion=<version> -DdevelopmentVersion=HEAD-SNAPSHOT -DtagNameFormat=$componentName-@{project.version}
-mvn release:perform
+mr/release branch --name service-one  -- bundle/ component/service/service-two/ component/webapp/ \
+        component/lib/lib-two/ component/lib/lib-three/
 ```
 
-Note that changes to the versions in the POM that the release plugin makes are not pushed back to the master branch by any process.
+All pathes after `--` of the monorep are not needed for releasing the current component and will be deleted. In this example it is the component `service-one`.
+
+For more details about this command execute
+
+```
+mr/release branch --help
+```
+
+### Release workflow
+
+To make a new release of an created release branch use the command `mr/release release`. The following command must be executed on a release branch. So the name of the branch must be something like 'release/<component>'
+
+```
+mr/release release --version 0.0.2 --dry-run false
+```
+
+For more details about this command execute
+
+```
+mr/release release --help
+```
 
 ## Credits
 

@@ -1,0 +1,263 @@
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
+
+# Don't undestand line 2 and 3? Then you should read this: https://dev.to/thiht/shell-scripts-matter
+
+BIN_NAME=$(basename "$0")
+COMMAND_NAME=$1
+
+sub_help () {
+    echo "Usage: $BIN_NAME <command>"
+    echo
+    echo "For details about a command, append '--help' to it."
+    echo
+    echo "Commands:"
+    echo "   help               This help message"
+    echo "   branch             Creates a release branch"
+    echo "   release            Updates the release branch and create a release"
+}
+
+branch_help () {
+    echo "Usage: $BIN_NAME branch <parameters> -- <components-to-delete>..."
+    echo
+    echo "Parameters:"
+    echo "   -h, --help                  This help message"
+    echo "   -n, --name                  Name of the new release branch."
+    echo "   -d, --dry-run               Run don't change anything in remote repositories."
+    echo "                               But there will be commits in the local repository."
+    echo "                               That changes can be discarded by git! If no explicit value is set, then for a"
+    echo "                               decision will be asked."
+    echo
+    echo "Example:"
+    echo
+    echo "   $BIN_NAME branch --name openls --dry-run true \\"
+    echo "     -- bundle/ component/service/ component/webapp/ component/lib/lib-two/ component/lib/lib-three/"
+}
+
+release_help () {
+    echo "Usage: $BIN_NAME release <parameters>"
+    echo
+    echo "This command only works if it executed on a release branch. So the branch name must be looks like"
+    echo "'release/<component>'."
+    echo
+    echo "Parameters:"
+    echo "   -h, --help                  This help message"
+    echo "   -d, --dry-run               Run don't change anything in remote repositories."
+    echo "                               But there will be commits in the local repository."
+    echo "                               That changes can be discarded by git! If no explicit value is set, then for a"
+    echo "                               decision will be asked."
+    echo "   -v, --version               Version of the next release, e.g. '1.12.0'."
+    echo "                               repository."
+    echo
+    echo "Example:"
+    echo
+    echo "   $BIN_NAME release --dry-run false --version 1.2.3"
+}
+
+sub_branch () {
+  declare -a DELETE_COMPONENTS
+  PUSH=0
+
+  # Every 'shift' call shifts all positional parameters down by one. See
+  # http://www.linuxcommand.org/wss0130.php for details.
+  while [ $# -gt 0 ]; do
+    case $1 in
+        -n | --name )               shift
+                                    BRANCH=$1
+                                    ;;
+        -- )                        shift
+                                    # all parameters after -- must be folders
+                                    DELETE_COMPONENTS=( "$@" )
+                                    break;
+                                    ;;
+        -d | --dry-run )            shift
+                                    DRY_RUN=$1
+                                    ;;
+        -h | --help )               branch_help
+                                    exit 0
+                                    ;;
+        * )                         echo "$1 is not a valid parameter"
+                                    branch_help
+                                    exit 1
+    esac
+    shift
+  done
+
+  # Check if variable BRANCH is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${BRANCH+x}" ]; then
+      echo "--name must be set"
+      exit 1
+  fi
+
+  # Check if variable BRANCH is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${DELETE_COMPONENTS+x}" ]; then
+      echo "No <components-to-delete> are set"
+      exit 1
+  fi
+
+  # Check if variable DRY_RUN is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${DRY_RUN+x}" ]; then
+      # Ask if no explicit --dry-run value is set.
+
+      echo "Do you wish to make a dry run?"
+      select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) DRY_RUN=true; break;;
+            No ) DRY_RUN=false; break;;
+        esac
+      done
+  fi
+
+  mvn clean
+  git branch "release/$BRANCH"
+  git checkout "release/$BRANCH"
+  # bundle/ component/service/ component/webapp/ component/lib/lib-two/ component/lib/lib-three/
+  for i in "${DELETE_COMPONENTS[@]}"
+  do
+    git rm -r "$i"
+  done
+  # Generate pom.xml files
+  mr/checkout.sh
+  sed -i '' 's/^pom.xml$/# pom.xml/' .gitignore
+  find . -name pom.xml -type f  -exec chmod u+w {} \;  -exec git add {} \;
+  git commit -am "$BRANCH components only"
+  if [ $PUSH -eq 1 ]; then
+      git push --all
+  fi
+
+}
+
+sub_release () {
+
+  # Every 'shift' call shifts all positional parameters down by one. See
+  # http://www.linuxcommand.org/wss0130.php for details.
+  while [ $# -gt 0 ]; do
+    case $1 in
+        -d | --dry-run )            shift
+                                    DRY_RUN=$1
+                                    ;;
+        -v | --version )            shift
+                                    VERSION=$1
+                                    ;;
+        -h | --help )               release_help
+                                    exit
+                                    ;;
+        * )                         release_help
+                                    exit 1
+    esac
+    shift
+  done
+
+  # If the git branch name is 'release/comp1' the result will be 'comp1'
+  BRANCH_NAME=$(git rev-parse --abbrev-ref HEAD)
+  COMPONENT=$(git rev-parse --abbrev-ref HEAD | cut -f2 -d/)
+  RELEASE=$(git rev-parse --abbrev-ref HEAD | cut -f1 -d/)
+
+  if [ "$RELEASE" != "release" ]; then
+      echo "This ($BRANCH_NAME) is not a release branch."
+      exit 1
+  fi
+
+  # Check if variable COMPONENT is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${COMPONENT+x}" ]; then
+      echo "This ($BRANCH_NAME) is a release branch, but it's not possible to determine the component name."
+      exit 1
+  fi
+
+  # Check if variable VERSION is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${VERSION+x}" ]; then
+      echo "'--version' must be set."
+      exit 1
+  fi
+
+  # Check if variable DRY_RUN is set.
+  #   https://stackoverflow.com/a/13864829/207596
+  if [ -z "${DRY_RUN+x}" ]; then
+      # Ask if no explicit --dry-run value is set.
+
+      echo "Do you wish to make a dry run?"
+      select yn in "Yes" "No"; do
+        case $yn in
+            Yes ) DRY_RUN=true; break;;
+            No ) DRY_RUN=false; break;;
+        esac
+      done
+  fi
+
+  mvn clean
+  git pull origin "$BRANCH_NAME"
+  set +e
+  git merge origin/master
+  # Clean up deleted but in master modified files
+  git status --porcelain | grep '^DU' | cut -d' ' -f2 | xargs git rm -rf
+  set -e
+  # Regenerate pom.xml files
+  mr/checkout.sh
+  # Before running release:prepare, make 'pom.xml' writable. It's only readable by mr/checkout.sh
+  find . -name pom.xml -type f  -exec chmod u+w {} \;
+
+  # Replace all HEAD-SNAPSHOT versions by the current release version.
+  #
+  # Example for release version 1.12.0
+  #
+  #   <version>HEAD-SNAPSHOT</version> --> <version>1.12.0</version>
+  #   <tag>HEAD-SNAPSHOT</tag> --> <tag>1.12.0</tag>
+  #
+  find . -type f -name pom.xml -exec sed -i.bak -e "s/<version>HEAD\-SNAPSHOT<\/version>/<version>$VERSION<\/version>/" -e "s/<tag>HEAD<\/tag>/<tag>$COMPONENT-$VERSION<\/tag>/" {} \;
+
+  if [ "$DRY_RUN" = true ] ; then
+    mvn install
+  else
+    mvn deploy
+  fi
+
+  # It can happen that there is nothing to commit. So ignore the returned status != 0
+  # and go on.
+  set +e
+  git commit -am "🤖 Merge in advance of release $COMPONENT-$VERSION"
+  set -e
+
+  git tag "$COMPONENT-$VERSION"
+
+  # Delete file with replaced version
+  find . -type f -name pom.xml -delete
+  # Get back the original pom.xml files with HEAD-SNAPSHOT
+  find . -type f -name pom.xml.bak  -exec rename 's/\.bak$//' "{}" \;
+
+  if [ "$DRY_RUN" = true ] ; then
+    echo "🤖 This was an dry run. $COMPONENT-$VERSION was not tagged in the remote repository"
+    echo "and not deployed to the artifact server."
+  else
+    git push origin "$BRANCH_NAME"
+    git push origin "$COMPONENT-$VERSION"
+  fi
+}
+
+
+if ! [ -z "${MAVEN_SETTINGS+x}" ]; then
+    MAVEN_OPTS="${MAVEN_OPTS:-} -Dorg.apache.maven.user-settings=$MAVEN_SETTINGS}"
+    export MAVEN_OPTS
+fi
+
+case $COMMAND_NAME in
+    "" | "-h" | "--help")
+        sub_help
+        ;;
+    *)
+        shift
+        "sub_${COMMAND_NAME}" "$@"
+        if [ $? = 127 ]; then
+            echo "'$COMMAND_NAME' is not a known command or has errors." >&2
+            sub_help
+            exit 1
+        fi
+        ;;
+esac
+
+exit 0
