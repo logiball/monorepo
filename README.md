@@ -48,7 +48,7 @@ mvn install
 
 ```
 monorepo/
-├── bundle│
+├── bundle
 ├── ci
 ├── component
 │   ├── app
